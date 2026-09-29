@@ -1,0 +1,33 @@
+###
+
+POST http://localhost:8080/api/sensors
+Content-Type: application/json
+
+{
+  "name": "Ванная",
+  "type": "TEMPERATURE",
+  "status": "ONLINE"
+}
+###
+
+DELETE http://localhost:8080/api/sensors/2
+Content-Type: application/json
+
+###
+
+GET http://localhost:8080/api/sensors
+
+###
+
+GET http://localhost:8080/api/sensors/3
+
+###
+
+PUT http://localhost:8080/api/sensors/4
+Content-Type: application/json
+
+{
+  "name": "Туалет",
+  "type": "LIGHT",
+  "lastValue": 10
+}
