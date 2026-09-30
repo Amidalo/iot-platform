@@ -51,7 +51,7 @@ public class SensorServiceTest
     {
         when(sensorRepository.findById(99L)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> sensorService.getById(99L))
-                .isInstanceOf(NoSuchElementException.class);
+                .isInstanceOf(SensorNotFoundException.class);
     }
 
     @Test
