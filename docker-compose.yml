@@ -29,5 +29,58 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  telemetry-db:
+    image: postgres:16-alpine
+    container_name: cont-telemetry-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: telemetry-db
+    ports:
+      - "5434:5432"
+    volumes:
+      - telemetry_postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d telemetry-db"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  telemetry-service:
+    build: ./services/telemetry-service
+    container_name: cont-telemetry-service
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://telemetry-db:5432/telemetry-db
+      APP_DEVICE_SERVICE_URL: http://device-service:8080
+      APP_MQTT_BROKERURL: tcp://mosquitto:1883
+    depends_on:
+      telemetry-db:
+        condition: service_healthy
+      device-service:
+        condition: service_started
+      mosquitto:
+        condition: service_healthy
+    restart: unless-stopped
+
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: cont-mosquitto
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./infrastructure/mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mosquitto_data:/mosquitto/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -t '$$SYS/#' -C 1 -i healthcheck -W 3"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
 volumes:
   postgres_data:
+  telemetry_postgres_data:
+  mosquitto_data:
