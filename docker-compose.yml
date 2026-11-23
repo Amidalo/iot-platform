@@ -65,6 +65,22 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  gateway:
+    build: ./services/gateway
+    container_name: cont-gateway
+    ports:
+      - "127.0.0.1:8090:8090"
+    environment:
+      GATEWAY_BIND_ADDRESS: 0.0.0.0
+      GATEWAY_DEVICE_URL: http://device-service:8080
+      GATEWAY_TELEMETRY_URL: http://telemetry-service:8081
+    depends_on:
+      device-service:
+        condition: service_started
+      telemetry-service:
+        condition: service_started
+    restart: unless-stopped
+
   mosquitto:
     image: eclipse-mosquitto:2.0
     container_name: cont-mosquitto
