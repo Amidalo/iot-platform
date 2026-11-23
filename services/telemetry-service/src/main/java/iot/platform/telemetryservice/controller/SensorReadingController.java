@@ -1,15 +1,16 @@
 package iot.platform.telemetryservice.controller;
 
-import iot.platform.telemetryservice.dto.ReadingMapper;
-import iot.platform.telemetryservice.dto.ReadingRequest;
-import iot.platform.telemetryservice.dto.ReadingResponse;
-import iot.platform.telemetryservice.model.SensorReading;
-import iot.platform.telemetryservice.service.SensorReadingService;
-import jakarta.validation.Valid;
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import iot.platform.telemetryservice.dto.ReadingMapper;
+import iot.platform.telemetryservice.dto.ReadingRequest;
+import iot.platform.telemetryservice.dto.ReadingResponse;
+import iot.platform.telemetryservice.model.MetricType;
+import iot.platform.telemetryservice.service.SensorReadingService;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/readings")
@@ -22,18 +23,24 @@ public class SensorReadingController
         this.service = service;
     }
 
+    /**
+     * Принимает пакет показаний одного датчика и возвращает сохранённые строки.
+     */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ReadingResponse create(@Valid @RequestBody ReadingRequest request)
+    public List<ReadingResponse> create(@Valid @RequestBody ReadingRequest request)
     {
-        SensorReading reading = service.create(ReadingMapper.toEntity(request));
-        return ReadingMapper.toResponse(reading);
+        return service.create(request.sensorId(), request.metrics()).stream()
+                .map(ReadingMapper::toResponse)
+                .toList();
     }
 
     @GetMapping("/sensor/{sensorId}")
-    public List<ReadingResponse> getBySensorId(@PathVariable Long sensorId)
+    public List<ReadingResponse> getBySensorId(
+            @PathVariable Long sensorId,
+            @RequestParam(required = false) MetricType metric)
     {
-        return service.getBySensorId(sensorId).stream()
+        return service.getBySensorId(sensorId, metric).stream()
                 .map(ReadingMapper::toResponse)
                 .toList();
     }

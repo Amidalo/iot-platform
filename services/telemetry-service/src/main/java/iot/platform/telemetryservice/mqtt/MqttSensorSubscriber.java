@@ -1,11 +1,6 @@
 package iot.platform.telemetryservice.mqtt;
 
-import iot.platform.telemetryservice.model.SensorReading;
-import iot.platform.telemetryservice.service.SensorReadingService;
-import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
+import java.util.Map;
 
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.MqttCallbackExtended;
@@ -17,16 +12,22 @@ import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
+import iot.platform.telemetryservice.service.SensorReadingService;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
+
 @Component
+@ConditionalOnProperty(name = "app.mqtt.enabled", havingValue = "true", matchIfMissing = true)
 public class MqttSensorSubscriber implements MqttCallbackExtended
 {
     private static final Logger log = LoggerFactory.getLogger(MqttSensorSubscriber.class);
     private static final int QOS = 1;
 
     private final SensorReadingService readingService;
-    private final ObjectMapper objectMapper;
+    private final MqttPayloadParser payloadParser;
     private final String brokerUrl;
     private final String clientId;
     private final String topicFilter;
@@ -34,13 +35,13 @@ public class MqttSensorSubscriber implements MqttCallbackExtended
     private MqttClient client;
 
     public MqttSensorSubscriber(SensorReadingService readingService,
-                                ObjectMapper objectMapper,
+                                MqttPayloadParser payloadParser,
                                 @Value("${app.mqtt.broker-url}") String brokerUrl,
                                 @Value("${app.mqtt.client-id}") String clientId,
                                 @Value("${app.mqtt.topic-filter}") String topicFilter)
     {
         this.readingService = readingService;
-        this.objectMapper = objectMapper;
+        this.payloadParser = payloadParser;
         this.brokerUrl = brokerUrl;
         this.clientId = clientId;
         this.topicFilter = topicFilter;
@@ -95,24 +96,16 @@ public class MqttSensorSubscriber implements MqttCallbackExtended
         // Поэтому ловим всё сами.
         try
         {
-            // Топик вида sensors/{id}/reading
-            String[] parts = topic.split("/");
-            if (parts.length != 3)
+            Long sensorId = parseSensorId(topic);
+            if (sensorId == null)
             {
-                log.warn("Неожиданный формат топика: {}", topic);
-                return;
-            }
-            Long sensorId = Long.parseLong(parts[1]);
-
-            JsonNode valueNode = objectMapper.readTree(message.getPayload()).get("value");
-            if (valueNode == null || !valueNode.isNumber())
-            {
-                log.warn("В сообщении из {} нет числового поля value", topic);
                 return;
             }
 
-            readingService.create(new SensorReading(sensorId, valueNode.asDouble()));
-            log.debug("Сохранено показание: датчик {} = {}", sensorId, valueNode.asDouble());
+            Map<String, Double> metrics = payloadParser.parse(message.getPayload());
+            int saved = readingService.create(sensorId, metrics).size();
+
+            log.debug("Сохранено {} показаний для датчика {}", saved, sensorId);
         }
         catch (NumberFormatException e)
         {
@@ -124,10 +117,23 @@ public class MqttSensorSubscriber implements MqttCallbackExtended
         }
     }
 
+    private Long parseSensorId(String topic)
+    {
+        // Топик вида sensors/{id}/reading
+        String[] parts = topic.split("/");
+        if (parts.length != 3 || !"sensors".equals(parts[0]) || !"reading".equals(parts[2]))
+        {
+            log.warn("Неожиданный формат топика: {}", topic);
+            return null;
+        }
+
+        return Long.parseLong(parts[1]);
+    }
+
     @Override
     public void connectionLost(Throwable cause)
     {
-        log.warn("Соединение с MQTT-брокером потеряно: {}", cause.getMessage());
+        log.warn("Соединение с MQTT-брокером потеряно: {}", cause == null ? "unknown" : cause.getMessage());
     }
 
     @Override

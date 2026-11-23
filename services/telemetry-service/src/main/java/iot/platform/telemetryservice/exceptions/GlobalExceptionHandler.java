@@ -26,6 +26,13 @@ public class GlobalExceptionHandler
                 .body(Map.of("message", ex.getMessage()));
     }
 
+    @ExceptionHandler({ InvalidReadingException.class, UnsupportedMetricException.class })
+    public ResponseEntity<Map<String, String>> handleInvalidReading(RuntimeException ex)
+    {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("message", ex.getMessage()));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, String>> handleValidation(MethodArgumentNotValidException ex)
     {

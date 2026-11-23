@@ -4,9 +4,12 @@ import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import iot.platform.telemetryservice.model.MetricType;
 import iot.platform.telemetryservice.model.SensorReading;
 
 public interface SensorReadingRepository extends JpaRepository<SensorReading, Long>
 {
-    List<SensorReading> findBySensorIdOrderByRecordedAtDesc(Long sensorId);    
+    List<SensorReading> findBySensorIdOrderByRecordedAtDesc(Long sensorId);
+
+    List<SensorReading> findBySensorIdAndMetricOrderByRecordedAtDesc(Long sensorId, MetricType metric);
 }
