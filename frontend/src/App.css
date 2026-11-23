@@ -1,0 +1,16 @@
+body {
+  font-family: sans-serif;
+  max-width: 600px;
+  margin: 40px auto;
+}
+form {
+  margin-bottom: 20px;
+  display: flex;
+  gap: 8px;
+}
+.sensor-card {
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 8px;
+}
