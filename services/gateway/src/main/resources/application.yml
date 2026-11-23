@@ -1,0 +1,26 @@
+server:
+  address: ${GATEWAY_BIND_ADDRESS:127.0.0.1}
+  port: ${GATEWAY_PORT:8090}
+  shutdown: graceful
+
+spring:
+  application:
+    name: gateway
+  lifecycle:
+    timeout-per-shutdown-phase: 10s
+
+gateway:
+  connect-timeout: 2s
+  request-timeout: 10s
+  max-body-bytes: 1048576
+  cors:
+    allowed-origins: ${GATEWAY_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+  routes:
+    - prefix: /api/sensors
+      target: ${GATEWAY_DEVICE_URL:http://localhost:8080}
+    - prefix: /api/readings
+      target: ${GATEWAY_TELEMETRY_URL:http://localhost:8081}
+
+logging:
+  level:
+    iot.platform.gateway: INFO
